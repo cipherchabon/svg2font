@@ -3,7 +3,7 @@ mod svg_parser;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "svg2font")]
@@ -53,8 +53,8 @@ fn main() -> Result<()> {
 }
 
 fn generate_font(
-    input: &PathBuf,
-    output: &PathBuf,
+    input: &Path,
+    output: &Path,
     font_name: &str,
     verbose: bool,
 ) -> Result<()> {

@@ -269,7 +269,6 @@ fn build_hhea(num_glyphs: u16) -> Hhea {
         caret_slope_run: 0,
         caret_offset: 0,
         number_of_h_metrics: num_glyphs,
-        ..Default::default()
     }
 }
 
