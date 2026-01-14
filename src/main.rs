@@ -1,4 +1,5 @@
 mod font_builder;
+mod preview;
 mod svg_parser;
 
 use anyhow::Result;
@@ -29,6 +30,10 @@ enum Commands {
         #[arg(short, long, default_value = "Icons")]
         name: String,
 
+        /// Generate HTML preview page
+        #[arg(short, long)]
+        preview: bool,
+
         /// Enable verbose output
         #[arg(short, long)]
         verbose: bool,
@@ -43,16 +48,23 @@ fn main() -> Result<()> {
             input,
             output,
             name,
+            preview,
             verbose,
         } => {
-            generate_font(&input, &output, &name, verbose)?;
+            generate_font(&input, &output, &name, preview, verbose)?;
         }
     }
 
     Ok(())
 }
 
-fn generate_font(input: &Path, output: &Path, font_name: &str, verbose: bool) -> Result<()> {
+fn generate_font(
+    input: &Path,
+    output: &Path,
+    font_name: &str,
+    generate_preview: bool,
+    verbose: bool,
+) -> Result<()> {
     // Create output directory if it doesn't exist
     std::fs::create_dir_all(output)?;
 
@@ -70,13 +82,18 @@ fn generate_font(input: &Path, output: &Path, font_name: &str, verbose: bool) ->
     println!("Found {} icons", icons.len());
 
     // Build the font
-    let ttf_path = output.join(format!(
-        "{}.ttf",
-        font_name.to_lowercase().replace(' ', "_")
-    ));
+    let base_name = font_name.to_lowercase().replace(' ', "_");
+    let ttf_path = output.join(format!("{}.ttf", base_name));
     font_builder::build_font(&icons, font_name, &ttf_path, verbose)?;
-
     println!("Generated: {}", ttf_path.display());
+
+    // Generate preview if requested
+    if generate_preview {
+        let preview_path = output.join(format!("{}_preview.html", base_name));
+        preview::generate_preview(&icons, font_name, &ttf_path, &preview_path)?;
+        println!("Generated: {}", preview_path.display());
+    }
+
     println!("\nDone! {} icons processed.", icons.len());
 
     Ok(())
