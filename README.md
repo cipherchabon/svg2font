@@ -33,7 +33,30 @@ Options:
 svg2font generate -i ./my-icons -o ./dist -n "MyAppIcons" --preview
 # Output:
 #   ./dist/myappicons.ttf
-#   ./dist/myappicons_preview.html
+#   ./dist/myappicons.json
+#   ./dist/myappicons_preview.html (with --preview)
+```
+
+## Manifest
+
+A JSON manifest is always generated alongside the TTF:
+
+```json
+{
+  "fontFamily": "MyIcons",
+  "icons": [
+    { "name": "arrow_down", "filename": "arrow-down", "codepoint": "E000" },
+    { "name": "arrow_up", "filename": "arrow-up", "codepoint": "E001" }
+  ]
+}
+```
+
+Use this to generate code for any platform:
+
+```
+# Ask an LLM:
+"Generate a Swift enum from this JSON: [paste manifest]"
+"Generate a React component with TypeScript types from: [paste manifest]"
 ```
 
 ## Preview

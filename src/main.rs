@@ -1,4 +1,5 @@
 mod font_builder;
+mod manifest;
 mod preview;
 mod svg_parser;
 
@@ -81,11 +82,17 @@ fn generate_font(
 
     println!("Found {} icons", icons.len());
 
-    // Build the font
     let base_name = font_name.to_lowercase().replace(' ', "_");
+
+    // Build the font
     let ttf_path = output.join(format!("{}.ttf", base_name));
     font_builder::build_font(&icons, font_name, &ttf_path, verbose)?;
     println!("Generated: {}", ttf_path.display());
+
+    // Generate manifest (always)
+    let manifest_path = output.join(format!("{}.json", base_name));
+    manifest::generate_manifest(&icons, font_name, &manifest_path)?;
+    println!("Generated: {}", manifest_path.display());
 
     // Generate preview if requested
     if generate_preview {
