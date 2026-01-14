@@ -4,11 +4,20 @@ Convert SVG icons to TTF icon font.
 
 ## Installation
 
+### Homebrew (macOS/Linux)
+
+```bash
+brew tap cipherchabon/tap
+brew install svg2font
+```
+
+### Cargo
+
 ```bash
 cargo install svg2font
 ```
 
-Or build from source:
+### From source
 
 ```bash
 cargo build --release
