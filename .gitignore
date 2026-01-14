@@ -1,0 +1,14 @@
+# Build artifacts
+/target/
+
+# Test assets
+/icons/
+/output/
+
+# OS files
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp

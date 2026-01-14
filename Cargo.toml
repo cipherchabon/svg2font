@@ -1,0 +1,31 @@
+[package]
+name = "svg2font"
+version = "0.1.0"
+edition = "2021"
+description = "Convert SVG icons to TTF icon font"
+license = "MIT"
+
+[dependencies]
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# SVG parsing
+usvg = "0.45"
+
+# Font generation (Google Fonts ecosystem)
+write-fonts = "0.34"
+read-fonts = "0.27"
+
+# Curves and paths
+kurbo = "0.11"
+
+# Error handling
+anyhow = "1"
+thiserror = "1"
+
+# File handling
+walkdir = "2"
+
+[profile.release]
+lto = true
+strip = true
