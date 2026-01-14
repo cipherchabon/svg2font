@@ -85,6 +85,53 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
             font-style: normal;
         }}
 
+        :root {{
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-card: #ffffff;
+            --border-color: #e0e0e0;
+            --border-hover: #ccc;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --icon-color: #1a1a1a;
+            --input-bg: #fff;
+            --toast-bg: #333;
+            --toast-color: #fff;
+        }}
+
+        @media (prefers-color-scheme: dark) {{
+            :root:not([data-theme="light"]) {{
+                --bg-primary: #0a0a0a;
+                --bg-secondary: #111;
+                --bg-card: #151515;
+                --border-color: #222;
+                --border-hover: #333;
+                --text-primary: #e0e0e0;
+                --text-secondary: #888;
+                --text-muted: #555;
+                --icon-color: #fff;
+                --input-bg: #1a1a1a;
+                --toast-bg: #444;
+                --toast-color: #fff;
+            }}
+        }}
+
+        [data-theme="dark"] {{
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111;
+            --bg-card: #151515;
+            --border-color: #222;
+            --border-hover: #333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888;
+            --text-muted: #555;
+            --icon-color: #fff;
+            --input-bg: #1a1a1a;
+            --toast-bg: #444;
+            --toast-color: #fff;
+        }}
+
         * {{
             box-sizing: border-box;
             margin: 0;
@@ -93,14 +140,15 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
 
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0a;
-            color: #e0e0e0;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
+            transition: background 0.2s, color 0.2s;
         }}
 
         .header {{
-            background: #111;
-            border-bottom: 1px solid #222;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
             padding: 1.5rem 2rem;
             position: sticky;
             top: 0;
@@ -123,7 +171,7 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
         }}
 
         .stats {{
-            color: #888;
+            color: var(--text-secondary);
             font-size: 0.875rem;
         }}
 
@@ -135,18 +183,18 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
         }}
 
         .search-box {{
-            background: #1a1a1a;
-            border: 1px solid #333;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 0.5rem 1rem;
-            color: #e0e0e0;
+            color: var(--text-primary);
             font-size: 0.875rem;
             width: 200px;
         }}
 
         .search-box:focus {{
             outline: none;
-            border-color: #555;
+            border-color: var(--border-hover);
         }}
 
         .size-control {{
@@ -157,12 +205,26 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
 
         .size-control label {{
             font-size: 0.875rem;
-            color: #888;
+            color: var(--text-secondary);
         }}
 
         .size-slider {{
             width: 100px;
-            accent-color: #666;
+        }}
+
+        .theme-toggle {{
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.5rem;
+            cursor: pointer;
+            font-size: 1.25rem;
+            line-height: 1;
+            transition: border-color 0.2s;
+        }}
+
+        .theme-toggle:hover {{
+            border-color: var(--border-hover);
         }}
 
         .container {{
@@ -178,8 +240,8 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
         }}
 
         .icon-card {{
-            background: #151515;
-            border: 1px solid #222;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 1.25rem;
             text-align: center;
@@ -188,8 +250,7 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
         }}
 
         .icon-card:hover {{
-            background: #1a1a1a;
-            border-color: #333;
+            border-color: var(--border-hover);
             transform: translateY(-2px);
         }}
 
@@ -202,19 +263,19 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
             font-size: var(--icon-size, 32px);
             line-height: 1;
             margin-bottom: 0.75rem;
-            color: #fff;
+            color: var(--icon-color);
         }}
 
         .icon-name {{
             font-size: 0.75rem;
-            color: #888;
+            color: var(--text-secondary);
             word-break: break-word;
             margin-bottom: 0.25rem;
         }}
 
         .icon-code {{
             font-size: 0.625rem;
-            color: #555;
+            color: var(--text-muted);
             font-family: monospace;
         }}
 
@@ -223,8 +284,8 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
             bottom: 2rem;
             left: 50%;
             transform: translateX(-50%) translateY(100px);
-            background: #333;
-            color: #fff;
+            background: var(--toast-bg);
+            color: var(--toast-color);
             padding: 0.75rem 1.5rem;
             border-radius: 8px;
             font-size: 0.875rem;
@@ -242,7 +303,7 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
             grid-column: 1 / -1;
             text-align: center;
             padding: 3rem;
-            color: #666;
+            color: var(--text-muted);
         }}
     </style>
 </head>
@@ -260,6 +321,9 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
                     <input type="range" class="size-slider" id="size" min="16" max="64" value="32">
                     <span id="size-value">32px</span>
                 </div>
+                <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
             </div>
         </div>
     </header>
@@ -278,6 +342,36 @@ fn generate_html(icons: &[Icon], font_name: &str, ttf_base64: &str) -> String {
         const sizeSlider = document.getElementById('size');
         const sizeValue = document.getElementById('size-value');
         const toast = document.getElementById('toast');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = themeToggle.querySelector('.theme-icon');
+
+        // Theme handling
+        function getSystemTheme() {{
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }}
+
+        function getCurrentTheme() {{
+            return document.documentElement.dataset.theme || getSystemTheme();
+        }}
+
+        function setTheme(theme) {{
+            document.documentElement.dataset.theme = theme;
+            themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', theme);
+        }}
+
+        // Initialize theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {{
+            setTheme(savedTheme);
+        }} else {{
+            themeIcon.textContent = getSystemTheme() === 'dark' ? '☀️' : '🌙';
+        }}
+
+        themeToggle.addEventListener('click', () => {{
+            const newTheme = getCurrentTheme() === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        }});
 
         // Search functionality
         search.addEventListener('input', (e) => {{
