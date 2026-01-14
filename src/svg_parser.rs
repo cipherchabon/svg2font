@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use kurbo::BezPath;
+use kurbo::{BezPath, PathEl, Point, Shape};
 use std::path::Path;
 use usvg::{Options, Tree};
 use walkdir::WalkDir;
@@ -120,7 +120,7 @@ fn collect_paths_recursive(group: &usvg::Group, combined: &mut BezPath) {
     }
 }
 
-/// Convert a usvg path to a kurbo BezPath
+/// Convert a usvg path to a kurbo BezPath, handling fill rules
 fn usvg_path_to_kurbo(path: &usvg::Path) -> BezPath {
     let mut bez = BezPath::new();
     let data = path.data();
@@ -149,7 +149,257 @@ fn usvg_path_to_kurbo(path: &usvg::Path) -> BezPath {
         }
     }
 
+    // Check if this path uses evenodd fill rule
+    let fill_rule = path
+        .fill()
+        .map(|f| f.rule())
+        .unwrap_or(usvg::FillRule::NonZero);
+
+    if fill_rule == usvg::FillRule::EvenOdd {
+        // For evenodd fill rule, we need to fix winding directions
+        // TrueType uses non-zero winding, so inner contours must wind opposite to outer
+        fix_evenodd_winding(&mut bez);
+    }
+
     bez
+}
+
+/// Split a BezPath into individual contours (subpaths)
+fn split_into_contours(path: &BezPath) -> Vec<BezPath> {
+    let mut contours = Vec::new();
+    let mut current = BezPath::new();
+
+    for el in path.elements() {
+        match el {
+            PathEl::MoveTo(p) => {
+                if !current.elements().is_empty() {
+                    contours.push(current);
+                    current = BezPath::new();
+                }
+                current.move_to(*p);
+            }
+            PathEl::LineTo(p) => current.line_to(*p),
+            PathEl::QuadTo(p1, p2) => current.quad_to(*p1, *p2),
+            PathEl::CurveTo(p1, p2, p3) => current.curve_to(*p1, *p2, *p3),
+            PathEl::ClosePath => current.close_path(),
+        }
+    }
+
+    if !current.elements().is_empty() {
+        contours.push(current);
+    }
+
+    contours
+}
+
+/// Calculate the signed area of a contour
+/// Positive = counter-clockwise, Negative = clockwise
+fn signed_area(contour: &BezPath) -> f64 {
+    let mut area = 0.0;
+    let mut first_point: Option<Point> = None;
+    let mut prev_point: Option<Point> = None;
+
+    for el in contour.elements() {
+        match el {
+            PathEl::MoveTo(p) => {
+                first_point = Some(*p);
+                prev_point = Some(*p);
+            }
+            PathEl::LineTo(p) => {
+                if let Some(prev) = prev_point {
+                    // Shoelace formula
+                    area += (prev.x * p.y) - (p.x * prev.y);
+                }
+                prev_point = Some(*p);
+            }
+            PathEl::QuadTo(_, p) | PathEl::CurveTo(_, _, p) => {
+                // Approximate - just use end points for area calculation
+                if let Some(prev) = prev_point {
+                    area += (prev.x * p.y) - (p.x * prev.y);
+                }
+                prev_point = Some(*p);
+            }
+            PathEl::ClosePath => {
+                if let (Some(prev), Some(first)) = (prev_point, first_point) {
+                    area += (prev.x * first.y) - (first.x * prev.y);
+                }
+            }
+        }
+    }
+
+    area / 2.0
+}
+
+/// Reverse the winding direction of a contour
+fn reverse_contour(contour: &BezPath) -> BezPath {
+    let mut points: Vec<(PathEl, Point)> = Vec::new();
+    let mut current_point = Point::ZERO;
+    let mut first_point = Point::ZERO;
+    let mut has_close = false;
+
+    // Collect all points and their element types
+    for el in contour.elements() {
+        match el {
+            PathEl::MoveTo(p) => {
+                first_point = *p;
+                current_point = *p;
+            }
+            PathEl::LineTo(p) => {
+                points.push((PathEl::LineTo(current_point), *p));
+                current_point = *p;
+            }
+            PathEl::QuadTo(p1, p2) => {
+                points.push((PathEl::QuadTo(*p1, current_point), *p2));
+                current_point = *p2;
+            }
+            PathEl::CurveTo(p1, p2, p3) => {
+                points.push((PathEl::CurveTo(*p2, *p1, current_point), *p3));
+                current_point = *p3;
+            }
+            PathEl::ClosePath => {
+                has_close = true;
+                if current_point != first_point {
+                    points.push((PathEl::LineTo(current_point), first_point));
+                }
+            }
+        }
+    }
+
+    // Build reversed path
+    let mut reversed = BezPath::new();
+
+    if points.is_empty() {
+        reversed.move_to(first_point);
+        return reversed;
+    }
+
+    // Start from the last point
+    let last_point = points.last().map(|(_, p)| *p).unwrap_or(first_point);
+    reversed.move_to(last_point);
+
+    // Add elements in reverse order
+    for (el, _) in points.iter().rev() {
+        match el {
+            PathEl::LineTo(p) => reversed.line_to(*p),
+            PathEl::QuadTo(p1, p2) => reversed.quad_to(*p1, *p2),
+            PathEl::CurveTo(p1, p2, p3) => reversed.curve_to(*p1, *p2, *p3),
+            _ => {}
+        }
+    }
+
+    if has_close {
+        reversed.close_path();
+    }
+
+    reversed
+}
+
+/// Check if a point is inside a contour using ray casting
+fn point_in_contour(point: Point, contour: &BezPath) -> bool {
+    let mut inside = false;
+    let mut prev_point: Option<Point> = None;
+    let mut first_point: Option<Point> = None;
+
+    for el in contour.elements() {
+        match el {
+            PathEl::MoveTo(p) => {
+                first_point = Some(*p);
+                prev_point = Some(*p);
+            }
+            PathEl::LineTo(p) | PathEl::QuadTo(_, p) | PathEl::CurveTo(_, _, p) => {
+                if let Some(prev) = prev_point {
+                    // Ray casting algorithm
+                    if (prev.y > point.y) != (p.y > point.y) {
+                        let x_intersect =
+                            prev.x + (point.y - prev.y) / (p.y - prev.y) * (p.x - prev.x);
+                        if point.x < x_intersect {
+                            inside = !inside;
+                        }
+                    }
+                }
+                prev_point = Some(*p);
+            }
+            PathEl::ClosePath => {
+                if let (Some(prev), Some(first)) = (prev_point, first_point) {
+                    if (prev.y > point.y) != (first.y > point.y) {
+                        let x_intersect =
+                            prev.x + (point.y - prev.y) / (first.y - prev.y) * (first.x - prev.x);
+                        if point.x < x_intersect {
+                            inside = !inside;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    inside
+}
+
+/// Fix winding directions for evenodd fill rule to work with non-zero winding
+fn fix_evenodd_winding(path: &mut BezPath) {
+    let contours = split_into_contours(path);
+
+    if contours.len() <= 1 {
+        return; // Nothing to fix for single contours
+    }
+
+    // Calculate signed areas and bounding boxes for all contours
+    let mut contour_info: Vec<(BezPath, f64, kurbo::Rect)> = contours
+        .into_iter()
+        .map(|c| {
+            let area = signed_area(&c);
+            let bbox = c.bounding_box();
+            (c, area, bbox)
+        })
+        .collect();
+
+    // Sort by bounding box area (descending) - larger contours are likely outer
+    contour_info.sort_by(|a, b| {
+        let area_a = a.2.width() * a.2.height();
+        let area_b = b.2.width() * b.2.height();
+        area_b.partial_cmp(&area_a).unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    // Determine nesting level for each contour
+    let mut fixed_contours: Vec<BezPath> = Vec::new();
+
+    for i in 0..contour_info.len() {
+        let (contour, area, bbox) = &contour_info[i];
+
+        // Count how many contours this one is inside of
+        let mut nesting_level = 0;
+        let center = Point::new(bbox.x0 + bbox.width() / 2.0, bbox.y0 + bbox.height() / 2.0);
+
+        for (other_contour, _, other_bbox) in contour_info.iter().take(i) {
+            // Quick check: if bounding box doesn't contain our center, skip
+            if other_bbox.contains(center) && point_in_contour(center, other_contour) {
+                nesting_level += 1;
+            }
+        }
+
+        // For TrueType non-zero winding:
+        // - Outer contours (even nesting level) should be clockwise (negative area)
+        // - Inner contours (odd nesting level) should be counter-clockwise (positive area)
+        let should_be_clockwise = nesting_level % 2 == 0;
+        let is_clockwise = *area < 0.0;
+
+        let fixed_contour = if should_be_clockwise != is_clockwise {
+            reverse_contour(contour)
+        } else {
+            contour.clone()
+        };
+
+        fixed_contours.push(fixed_contour);
+    }
+
+    // Rebuild the path
+    *path = BezPath::new();
+    for contour in fixed_contours {
+        for el in contour.elements() {
+            path.push(*el);
+        }
+    }
 }
 
 /// Convert a filename to a valid Dart identifier
