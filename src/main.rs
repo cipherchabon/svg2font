@@ -52,12 +52,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn generate_font(
-    input: &Path,
-    output: &Path,
-    font_name: &str,
-    verbose: bool,
-) -> Result<()> {
+fn generate_font(input: &Path, output: &Path, font_name: &str, verbose: bool) -> Result<()> {
     // Create output directory if it doesn't exist
     std::fs::create_dir_all(output)?;
 
@@ -75,7 +70,10 @@ fn generate_font(
     println!("Found {} icons", icons.len());
 
     // Build the font
-    let ttf_path = output.join(format!("{}.ttf", font_name.to_lowercase().replace(' ', "_")));
+    let ttf_path = output.join(format!(
+        "{}.ttf",
+        font_name.to_lowercase().replace(' ', "_")
+    ));
     font_builder::build_font(&icons, font_name, &ttf_path, verbose)?;
 
     println!("Generated: {}", ttf_path.display());

@@ -46,10 +46,7 @@ pub fn parse_svg_directory(dir: &Path, verbose: bool) -> Result<Vec<Icon>> {
         match parse_svg_file(path, codepoint) {
             Ok(icon) => {
                 if verbose {
-                    println!(
-                        "  Parsed: {} -> U+{:04X}",
-                        icon.filename, icon.codepoint
-                    );
+                    println!("  Parsed: {} -> U+{:04X}", icon.filename, icon.codepoint);
                 }
                 icons.push(icon);
                 codepoint += 1;
@@ -137,10 +134,7 @@ fn usvg_path_to_kurbo(path: &usvg::Path) -> BezPath {
                 bez.line_to((pt.x as f64, pt.y as f64));
             }
             usvg::tiny_skia_path::PathSegment::QuadTo(pt1, pt2) => {
-                bez.quad_to(
-                    (pt1.x as f64, pt1.y as f64),
-                    (pt2.x as f64, pt2.y as f64),
-                );
+                bez.quad_to((pt1.x as f64, pt1.y as f64), (pt2.x as f64, pt2.y as f64));
             }
             usvg::tiny_skia_path::PathSegment::CubicTo(pt1, pt2, pt3) => {
                 bez.curve_to(
@@ -203,8 +197,14 @@ mod tests {
 
     #[test]
     fn test_filename_to_identifier() {
-        assert_eq!(filename_to_identifier("arrowDown-filled"), "arrow_down_filled");
-        assert_eq!(filename_to_identifier("Appliance-stroke"), "appliance_stroke");
+        assert_eq!(
+            filename_to_identifier("arrowDown-filled"),
+            "arrow_down_filled"
+        );
+        assert_eq!(
+            filename_to_identifier("Appliance-stroke"),
+            "appliance_stroke"
+        );
         assert_eq!(filename_to_identifier("Bank-filled"), "bank_filled");
         assert_eq!(filename_to_identifier("123icon"), "icon_123icon");
     }
